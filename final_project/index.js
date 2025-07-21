@@ -10,8 +10,20 @@ app.use(express.json());
 
 app.use("/customer",session({secret:"fingerprint_customer",resave: true, saveUninitialized: true}))
 
-app.use("/customer/auth/*", function auth(req,res,next){
-//Write the authenication mechanism here
+app.use("/customer/auth/*", (req, res, next) => {
+  const authSession = req.session.authorization;
+  if (!authSession || !authSession.accessToken) {
+    return res.status(401).json({ message: "User not authenticated" });
+  }
+
+  const token = authSession.accessToken;
+  jwt.verify(token, "access", (err, decoded) => {
+    if (err) {
+      return res.status(403).json({ message: "Invalid or expired token" });
+    }
+    req.user = decoded;
+    next();
+  });
 });
  
 const PORT =5000;
@@ -19,4 +31,6 @@ const PORT =5000;
 app.use("/customer", customer_routes);
 app.use("/", genl_routes);
 
-app.listen(PORT,()=>console.log("Server is running"));
+app.listen(PORT, "0.0.0.0", () =>
+  console.log("Server is running on port " + PORT)
+);
